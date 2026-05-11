@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskflow Pro | Enterprise Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cloudflare.com" rel="stylesheet">
+    
+    <style>
+        @import url('https://googleapis.com');
+        
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        
+        .sidebar-link.active { 
+            background: #f1f5f9; 
+            color: #4f46e5; 
+            border-right: 4px solid #4f46e5; 
+        }
+        
+        .task-row { transition: all 0.2s ease; border-bottom: 1px solid #f1f5f9; }
+        .task-row:hover { background: #f8fafc; transform: translateY(-1px); }
+        
+        .page-content { display: none; }
+        .page-content.active { display: block; animation: fadeIn 0.3s ease; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col p-6">
+        <div class="flex items-center gap-2 mb-10 px-2">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg">
+                <i class="fa-solid fa-check-double"></i>
+            </div>
+            <span class="font-bold text-xl tracking-tight">Taskflow<span class="text-indigo-600">.</span></span>
+        </div>
+        
+        <nav class="space-y-1 flex-1">
+            <button onclick="navigate('overview')" id="nav-overview" class="sidebar-link active w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-semibold transition-all">
+                <i class="fa-solid fa-chart-pie w-5"></i> Dashboard
+            </button>
+            <button onclick="navigate('mytasks')" id="nav-mytasks" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-semibold transition-all">
+                <i class="fa-solid fa-list-check w-5"></i> My Tasks
+            </button>
+            <button onclick="navigate('analytics')" id="nav-analytics" class="sidebar-link w-full flex items-center gap-3 px-3 py-3 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-semibold transition-all">
+                <i class="fa-solid fa-bolt w-5"></i> Analytics
+            </button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+            <div id="page-title" class="font-bold text-slate-400 uppercase text-xs tracking-widest">Dashboard / Overview</div>
+            <button onclick="openModal()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">+ CREATE TASK</button>
+        </header>
+
+        <div id="page-overview" class="page-content active flex-1 p-8 overflow-y-auto">
+            <div class="max-w-5xl mx-auto">
+                <h1 class="text-3xl font-bold mb-8">Performance Hub</h1>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase mb-2">Total Tasks</p>
+                        <p id="total-count" class="text-3xl font-bold text-slate-800">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase mb-2">Pending</p>
+                        <p id="pending-count" class="text-3xl font-bold text-amber-500">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase mb-2">Efficiency</p>
+                        <p id="efficiency-rate" class="text-3xl font-bold text-emerald-500">0%</p>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="p-5 border-b border-slate-100 font-bold text-sm bg-slate-50/50">Recent Activity</div>
+                    <div id="main-task-list" class="divide-y divide-slate-100">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-mytasks" class="page-content flex-1 p-8 overflow-y-auto">
+            <div class="max-w-3xl mx-auto text-center md:text-left">
+                <h1 class="text-3xl font-bold mb-2 text-indigo-600">Personal Focus</h1>
+                <p class="text-slate-500 mb-8 font-medium">Currently assigned active items.</p>
+                <div id="filtered-task-list" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <div id="page-analytics" class="page-content flex-1 p-8 overflow-y-auto">
+            <div class="max-w-4xl mx-auto text-center py-20">
+                <div class="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800">Data Insights</h2>
+                <p class="text-slate-500 max-w-md mx-auto mt-2 italic">Automated productivity scoring is active. Complete more tasks to generate deep insights.</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-8 shadow-2xl">
+            <h3 class="text-xl font-bold mb-6">New Objective</h3>
+            <div class="space-y-4">
+                <input type="text" id="taskInput" placeholder="What needs to be done?" 
+                    class="w-full border border-slate-200 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                
+                <select id="prioritySelect" class="w-full border border-slate-200 rounded-xl p-4 outline-none appearance-none bg-slate-50">
+                    <option value="Standard">Standard Priority</option>
+                    <option value="High">High Priority (@critical)</option>
+                </select>
+                
+                <div class="flex gap-3 pt-4">
+                    <button onclick="closeModal()" class="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-100 rounded-xl transition-all">Cancel</button>
+                    <button onclick="handleAddTask()" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all">Save Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        let tasks = JSON.parse(localStorage.getItem('fullStackTasks')) || [];
+        let currentPage = 'overview';
+
+        function navigate(page) {
+            currentPage = page;
+
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+
+            document.querySelectorAll('.sidebar-link').forEach(l => {
+                l.classList.remove('active', 'text-indigo-600');
+                l.classList.add('text-slate-500');
+            });
+            document.getElementById('nav-' + page).classList.add('active');
+            document.getElementById('nav-' + page).classList.remove('text-slate-500');
+            
+            document.getElementById('page-title').innerText = `Dashboard / ${page}`;
+
+            if(page === 'overview') renderDashboard();
+            if(page === 'mytasks') renderMyTasks();
+        }
+
+        function handleAddTask() {
+            const textInput = document.getElementById('taskInput');
+            const priorityInput = document.getElementById('prioritySelect');
+            
+            if(!textInput.value.trim()) return;
+
+            const newTask = { 
+                id: Date.now(), 
+                text: textInput.value.trim(), 
+                priority: priorityInput.value, 
+                completed: false 
+            };
+
+            tasks.push(newTask);
+            saveData();
+            closeModal();
+            textInput.value = '';
+            navigate(currentPage);
+        }
+
+        function toggleTask(id) {
+            tasks = tasks.map(t => t.id === id ? {...t, completed: !t.completed} : t);
+            saveData();
+            navigate(currentPage);
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveData();
+            navigate(currentPage);
+        }
+
+        function renderDashboard() {
+            const list = document.getElementById('main-task-list');
+            list.innerHTML = tasks.length ? '' : '<p class="p-16 text-center text-slate-400 italic text-sm">No tasks found. Create one to begin.</p>';
+            
+            [...tasks].reverse().forEach(task => {
+                const div = document.createElement('div');
+                div.className = "task-row flex items-center justify-between p-5 px-8";
+                div.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <span class="w-2 h-2 rounded-full ${task.priority === 'High' ? 'bg-rose-500' : 'bg-slate-300'}"></span>
+                        <p class="text-sm font-medium ${task.completed ? 'line-through opacity-40' : 'text-slate-700'}">${task.text}</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="toggleTask(${task.id})" class="text-emerald-500 hover:scale-125 transition-all">
+                            <i class="${task.completed ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle-check'}"></i>
+                        </button>
+                        <button onclick="deleteTask(${task.id})" class="text-slate-300 hover:text-rose-500 transition-colors">
+                            <i class="fa-solid fa-trash-can text-[12px]"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+            updateStats();
+        }
+
+        function renderMyTasks() {
+            const list = document.getElementById('filtered-task-list');
+            const pending = tasks.filter(t => !t.completed);
+            list.innerHTML = pending.length ? '' : '<div class="text-center py-24 bg-white rounded-3xl border border-slate-100"><p class="text-slate-400 italic">Zero pending items. Great job!</p></div>';
+            
+            pending.forEach(task => {
+                const div = document.createElement('div');
+                div.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex justify-between items-center hover:border-indigo-200 transition-all";
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold text-slate-700">${task.text}</p>
+                        <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">
+                             <i class="fa-solid fa-circle text-[6px] mr-1"></i> ${task.priority} Priority
+                        </p>
+                    </div>
+                    <button onclick="toggleTask(${task.id})" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-[10px] font-black hover:bg-indigo-600 hover:text-white transition-all">DONE</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function updateStats() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            document.getElementById('total-count').innerText = total;
+            document.getElementById('pending-count').innerText = total - completed;
+            document.getElementById('efficiency-rate').innerText = total ? Math.round((completed/total)*100) + '%' : '0%';
+        }
+
+        function saveData() {
+            localStorage.setItem('fullStackTasks', JSON.stringify(tasks));
+        }
+
+        function openModal() { document.getElementById('modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        // Load dashboard on start
+        window.onload = renderDashboard;
+    </script>
+</body>
+</html>
